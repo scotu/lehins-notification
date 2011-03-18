@@ -49,8 +49,13 @@ class NoticeType(models.Model):
 
 
 # if this gets updated, the create() method below needs to be as well...
+# (id, name, slug, function)
 NOTICE_MEDIA = (
     ("1", _("Email")),
+)
+
+NOTICE_MEDIA_CALLBACK = (
+    ("1", _("Email"), "email", None),
 )
 
 # how spam-sensitive is the medium
@@ -307,20 +312,30 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         # get prerendered format messages
         messages = get_formatted_messages(formats, label, context)
 
-        # Strip newlines from subject
-        subject = ''.join(render_to_string('notification/email_subject.txt', {
-            'message': messages['short.txt'],
-        }, context).splitlines())
+        for id, name, slug, function in NOTICE_MEDIA_CALLBACK:
 
-        body = render_to_string('notification/email_body.txt', {
-            'message': messages['full.txt'],
-        }, context)
+            # Strip newlines from subject
+            subject = ''.join(render_to_string('notification/%s_subject.txt' % slug, {
+                'message': messages['short.txt'],
+            }, context).splitlines())
 
-        notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
-            notice_type=notice_type, on_site=on_site, sender=sender)
-        if should_send(user, notice_type, "1") and user.email and user.is_active: # Email
-            recipients.append(user.email)
-        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipients)
+            body = render_to_string('notification/%s_body.txt' % slug, {
+                'message': messages['full.txt'],
+            }, context)
+
+            notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
+                notice_type=notice_type, on_site=on_site, sender=sender)
+            if should_send(user, notice_type, id) and user.email and user.is_active: # Email
+                recipients.append(user)
+            # If there is no send function, use sendmail
+            if not function:
+                recipients = [u.email for u in recipients]
+                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipients)
+            else:
+                try:
+                    function(subject, body, recipients)
+                except TypeError:
+                    print "Tried to send notification to media %s. Send function did not work" % media[1]
 
     # reset environment to original language
     activate(current_language)
@@ -450,3 +465,9 @@ def is_observing(observed, observer, signal='post_save'):
 
 def handle_observations(sender, instance, *args, **kw):
     send_observation_notices_for(instance)
+
+def register_new_media(id, name, slug, function):
+    global NOTICE_MEDIA, NOTICE_MEDIA_CALLBACK
+    NOTICE_MEDIA += ((id, name)),
+    NOTICE_MEDIA_CALLBACK += ((id, name, slug, function),)
+    NOTICE_MEDIA_DEFAULTS.update({id:2})
