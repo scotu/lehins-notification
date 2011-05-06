@@ -63,6 +63,26 @@ NOTICE_MEDIA_DEFAULTS = {
     "1": 2 # email
 }
 
+import copy
+class NoticeMediaListChoices():
+    """
+        Iterator used to delay getting the NoticeSetting medium choices list until required
+        (and when the other medium have been registered).
+    """
+
+    def __init__(self):
+            self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        self.index = self.index + 1
+        try:
+            return NOTICE_MEDIA[self.index - 1]
+        except IndexError:
+            raise StopIteration
+    
 class NoticeSetting(models.Model):
     """
     Indicates, for a given user, whether to send notifications
@@ -71,7 +91,7 @@ class NoticeSetting(models.Model):
 
     user = models.ForeignKey(User, verbose_name=_('user'))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_('notice type'))
-    medium = models.CharField(_('medium'), max_length=1, choices=NOTICE_MEDIA)
+    medium = models.CharField(_('medium'), max_length=1, choices=NoticeMediaListChoices())
     send = models.BooleanField(_('send'))
 
     class Meta:
