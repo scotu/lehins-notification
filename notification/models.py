@@ -63,7 +63,7 @@ NOTICE_MEDIA_DEFAULTS = {
     "1": 2 # email
 }
 
-import copy
+
 class NoticeMediaListChoices():
     """
         Iterator used to delay getting the NoticeSetting medium choices list until required
@@ -82,7 +82,27 @@ class NoticeMediaListChoices():
             return NOTICE_MEDIA[self.index - 1]
         except IndexError:
             raise StopIteration
-    
+
+
+class NoticeMediaCallbackChoices():
+    """
+        Iterator used to delay getting the NoticeSetting medium choices list until required
+        (and when the other medium have been registered).
+    """
+
+    def __init__(self):
+            self.index = 0
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        self.index = self.index + 1
+        try:
+            return NOTICE_MEDIA_CALLBACK[self.index - 1]
+        except IndexError:
+            raise StopIteration        
+
 class NoticeSetting(models.Model):
     """
     Indicates, for a given user, whether to send notifications
