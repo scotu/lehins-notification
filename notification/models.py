@@ -25,6 +25,16 @@ from django.contrib.contenttypes import generic
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext, get_language, activate
 
+"""
+    notice.html is used for saving Notice object content
+    subject.txt and message.txt can be put either in notification/noticetype_label/media_slug or notification/noticetype_label/
+    or notification/
+"""
+MESAGES_TEMPLATES_FORMATS = (
+        'subject.txt',
+        'message.txt',
+        'notice.html',
+    ) # TODO make formats configurable
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
 
@@ -36,6 +46,7 @@ class NoticeType(models.Model):
     label = models.CharField(_('label'), max_length=40)
     display = models.CharField(_('display'), max_length=50)
     description = models.CharField(_('description'), max_length=100)
+    slug = models.CharField(_('template folder slug'), max_length=40, blank=True)
 
     # by default only on for media with sensitivity less than or equal to this number
     default = models.IntegerField(_('default'))
@@ -46,6 +57,10 @@ class NoticeType(models.Model):
     class Meta:
         verbose_name = _("notice type")
         verbose_name_plural = _("notice types")
+
+    @property
+    def template_slug(self):
+        return self.slug or self.label
 
 
 # if this gets updated, the create() method below needs to be as well...
@@ -272,7 +287,7 @@ def get_notification_language(user):
             raise LanguageStoreNotAvailable
     raise LanguageStoreNotAvailable
 
-def get_formatted_messages(formats, label, context):
+def get_formatted_messages(formats, notice_type, context, media_slug=None):
     """
     Returns a dictionary with the format identifier as the key. The values are
     are fully rendered templates with the given context.
@@ -285,11 +300,12 @@ def get_formatted_messages(formats, label, context):
         else:
             context.autoescape = True
         format_templates[format] = render_to_string((
-            'notification/%s/%s' % (label, format),
+            'notification/%s/%s/%s' % (notice_type.template_slug, media_slug, format),
+            'notification/%s/%s' % (notice_type.template_slug, format),
             'notification/%s' % format), context_instance=context)
     return format_templates
 
-def send_now(users, label, extra_context=None, on_site=True, sender=None):
+def send_now(users, label, extra_context=None, on_site=True, sender=None, from_email=settings.DEFAULT_FROM_EMAIL):
     """
     Creates a new notice.
 
@@ -319,12 +335,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
 
     current_language = get_language()
 
-    formats = (
-        'short.txt',
-        'full.txt',
-        'notice.html',
-        'full.html',
-    ) # TODO make formats configurable
+    formats = MESAGES_TEMPLATES_FORMATS
 
     for user in users:
         recipients = []
@@ -349,19 +360,10 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         })
         context.update(extra_context)
 
-        # get prerendered format messages
-        messages = get_formatted_messages(formats, label, context)
+        for id, name, media_slug, function in NOTICE_MEDIA_CALLBACK:
 
-        for id, name, slug, function in NOTICE_MEDIA_CALLBACK:
-
-            # Strip newlines from subject
-            subject = ''.join(render_to_string('notification/%s_subject.txt' % slug, {
-                'message': messages['short.txt'],
-            }, context).splitlines())
-
-            body = render_to_string('notification/%s_body.txt' % slug, {
-                'message': messages['full.txt'],
-            }, context)
+            # get prerendered format messages
+            messages = get_formatted_messages(formats, notice_type, context, media_slug)
 
             notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
                 notice_type=notice_type, on_site=on_site, sender=sender)
@@ -370,10 +372,10 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
             # If there is no send function, use sendmail
             if not function:
                 recipients = [u.email for u in recipients]
-                send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipients)
+                send_mail(messages['subject.txt'], messages['message.txt'], from_email, recipients)
             else:
                 try:
-                    function(subject, body, recipients)
+                    function(messages['subject.txt'], messages['message.txt'], recipients)
                 except TypeError:
                     print "Tried to send notification to media %s. Send function did not work" % media[1]
 
