@@ -40,11 +40,11 @@ Here is an example::
         print "Skipping creation of NoticeTypes as notification app not found"
 
 Notice that the code is wrapped in a conditional clause so if
-django-notification is not installed, your app will proceed anyway.
+notification is not installed, your app will proceed anyway.
 
 Note that the display and description arguments are marked for translation by
 using ugettext_noop. That will enable you to use Django's makemessages
-management command and use django-notification's i18n capabilities.
+management command and use notification's i18n capabilities.
 
 Notification templates
 ======================
@@ -132,8 +132,8 @@ This enables you to override on a per call basis whether it should call
 Optional notification support
 -----------------------------
 
-In case you want to use django-notification in your reusable app, you can
-wrap the import of django-notification in a conditional clause that tests
+In case you want to use notification in your reusable app, you can
+wrap the import of notification in a conditional clause that tests
 if it's installed before sending a notice. As a result your app or
 project still functions without notification.
 

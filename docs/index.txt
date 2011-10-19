@@ -1,6 +1,9 @@
 ===================
-django-notification
+incuna-notification
 ===================
+
+This is a fork of django-notification with the aim of improving the process by
+which alternative notice media (e.g. SMS) are integrated and used.
 
 Many sites need to notify users when certain events have occurred and to allow
 configurable options as to how those notifications are to be received.
@@ -12,6 +15,7 @@ includes:
  * Notification messages on signing in.
  * Notification messages via email (configurable by user).
  * Notification messages via feed.
+ * Notification messages via other configurable media.
 
 Contents:
 
