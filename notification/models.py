@@ -8,7 +8,6 @@ except ImportError:
 from django.db import models
 from django.db.models.query import QuerySet
 from django.conf import settings
-from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
 from django.template import Context
 from django.template.loader import render_to_string
@@ -25,18 +24,19 @@ from django.contrib.contenttypes import generic
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ugettext, get_language, activate
 
+from notification.backends import get_backends, get_backend
+
 """
     notice.html is used for saving Notice object content
     subject.txt and message.txt can be put either in notification/noticetype_label/media_slug or notification/noticetype_label/
     or notification/
 """
-MESAGES_TEMPLATES_FORMATS = (
-        'subject.txt',
-        'message.txt',
-        'notice.html',
-    ) # TODO make formats configurable
+
+TEMPLATES_FORMATS = getattr(settings, "NOTIFICATION_TEMPLATES_FORMATS", 
+                            ('subject.txt', 'message.txt', 'notice.html',))
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
+
 
 class LanguageStoreNotAvailable(Exception):
     pass
@@ -63,22 +63,6 @@ class NoticeType(models.Model):
         return self.slug or self.label
 
 
-# if this gets updated, the create() method below needs to be as well...
-# (id, name, slug, function)
-NOTICE_MEDIA = (
-    ("1", _("Email")),
-)
-
-NOTICE_MEDIA_CALLBACK = (
-    ("1", _("Email"), "email", None),
-)
-
-# how spam-sensitive is the medium
-NOTICE_MEDIA_DEFAULTS = {
-    "1": 2 # email
-}
-
-
 class NoticeMediaListChoices():
     """
         Iterator used to delay getting the NoticeSetting medium choices list until required
@@ -86,37 +70,20 @@ class NoticeMediaListChoices():
     """
 
     def __init__(self):
-            self.index = 0
+        self.index = -1
 
     def __iter__(self):
         return self
 
     def next(self):
-        self.index = self.index + 1
+        self.index += 1
         try:
-            return NOTICE_MEDIA[self.index - 1]
+            item = get_backends()[self.index]
         except IndexError:
             raise StopIteration
+        else:
+            return (item.slug, item.title)
 
-
-class NoticeMediaCallbackChoices():
-    """
-        Iterator used to delay getting the NoticeSetting medium choices list until required
-        (and when the other medium have been registered).
-    """
-
-    def __init__(self):
-            self.index = 0
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        self.index = self.index + 1
-        try:
-            return NOTICE_MEDIA_CALLBACK[self.index - 1]
-        except IndexError:
-            raise StopIteration        
 
 class NoticeSetting(models.Model):
     """
@@ -126,7 +93,7 @@ class NoticeSetting(models.Model):
 
     user = models.ForeignKey(User, verbose_name=_('user'))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_('notice type'))
-    medium = models.CharField(_('medium'), max_length=1, choices=NoticeMediaListChoices())
+    medium = models.CharField(_('medium'), max_length=100, choices=NoticeMediaListChoices())
     send = models.BooleanField(_('send'))
 
     class Meta:
@@ -138,7 +105,7 @@ def get_notification_setting(user, notice_type, medium):
     try:
         return NoticeSetting.objects.get(user=user, notice_type=notice_type, medium=medium)
     except NoticeSetting.DoesNotExist:
-        default = (NOTICE_MEDIA_DEFAULTS[medium] <= notice_type.default)
+        default = (get_backend(medium).sensitivity <= notice_type.default)
         setting = NoticeSetting(user=user, notice_type=notice_type, medium=medium, send=default)
         setting.save()
         return setting
@@ -335,8 +302,6 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, from_e
 
     current_language = get_language()
 
-    formats = MESAGES_TEMPLATES_FORMATS
-
     for user in users:
         recipients = []
         # get user language for user from language store defined in
@@ -360,24 +325,19 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, from_e
         })
         context.update(extra_context)
 
-        for id, name, media_slug, function in NOTICE_MEDIA_CALLBACK:
-
+        for backend in get_backends():
             # get prerendered format messages
-            messages = get_formatted_messages(formats, notice_type, context, media_slug)
+            messages = get_formatted_messages(TEMPLATES_FORMATS, notice_type, context, backend.slug)
 
             notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
                 notice_type=notice_type, on_site=on_site, sender=sender)
-            if should_send(user, notice_type, id) and user.email and user.is_active: # Email
+            if should_send(user, notice_type, backend.slug) and user.email and user.is_active: # Email
                 recipients.append(user)
-            # If there is no send function, use sendmail
-            if not function:
-                recipients = [u.email for u in recipients]
-                send_mail(messages['subject.txt'], messages['message.txt'], from_email, recipients)
-            else:
-                try:
-                    function(messages['subject.txt'], messages['message.txt'], recipients)
-                except TypeError:
-                    print "Tried to send notification to media %s. Send function did not work" % media[1]
+
+            try:
+                backend.send(messages['subject.txt'], messages['message.txt'], recipients)
+            except TypeError:
+                print "Tried to send notification to media %s. Send function did not work" % media[1]
 
     # reset environment to original language
     activate(current_language)
@@ -508,8 +468,3 @@ def is_observing(observed, observer, signal='post_save'):
 def handle_observations(sender, instance, *args, **kw):
     send_observation_notices_for(instance)
 
-def register_new_media(id, name, slug, function):
-    global NOTICE_MEDIA, NOTICE_MEDIA_CALLBACK
-    NOTICE_MEDIA += ((id, name)),
-    NOTICE_MEDIA_CALLBACK += ((id, name, slug, function),)
-    NOTICE_MEDIA_DEFAULTS.update({id:2})
