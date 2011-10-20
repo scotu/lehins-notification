@@ -303,7 +303,6 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, from_e
     current_language = get_language()
 
     for user in users:
-        recipients = []
         # get user language for user from language store defined in
         # NOTIFICATION_LANGUAGE_MODULE setting
         try:
@@ -325,19 +324,25 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, from_e
         })
         context.update(extra_context)
 
+        messages = get_formatted_messages(['notice.html'], notice_type, context, 'notice')
+        notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
+            notice_type=notice_type, on_site=on_site, sender=sender)
+
         for backend in get_backends():
+            recipients = []
+
             # get prerendered format messages
             messages = get_formatted_messages(TEMPLATES_FORMATS, notice_type, context, backend.slug)
 
-            notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
-                notice_type=notice_type, on_site=on_site, sender=sender)
-            if should_send(user, notice_type, backend.slug) and user.email and user.is_active: # Email
+            if user.is_active and should_send(user, notice_type, backend.slug):
                 recipients.append(user)
 
-            try:
-                backend.send(messages['subject.txt'], messages['message.txt'], recipients)
-            except TypeError:
-                print "Tried to send notification to media %s. Send function did not work" % media[1]
+            if recipients:
+                try:
+                    backend.send(messages['subject.txt'], messages['message.txt'], recipients)
+                except TypeError, e:
+                    print u"Tried to send notification to media %s. Send function raised an error." % (backend.title,)
+                    raise e
 
     # reset environment to original language
     activate(current_language)
