@@ -269,10 +269,11 @@ def get_formatted_messages(formats, notice_type, context, media_slug=None):
         format_templates[format] = render_to_string((
             'notification/%s/%s/%s' % (notice_type.template_slug, media_slug, format),
             'notification/%s/%s' % (notice_type.template_slug, format),
+            'notification/%s/%s' % (media_slug, format),
             'notification/%s' % format), context_instance=context)
     return format_templates
 
-def send_now(users, label, extra_context=None, on_site=True, sender=None, from_email=settings.DEFAULT_FROM_EMAIL):
+def send_now(users, label, extra_context=None, on_site=True, sender=None):
     """
     Creates a new notice.
 
@@ -329,23 +330,28 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, from_e
             notice_type=notice_type, on_site=on_site, sender=sender)
 
         for backend in get_backends():
-            recipients = []
-
-            # get prerendered format messages
-            messages = get_formatted_messages(TEMPLATES_FORMATS, notice_type, context, backend.slug)
-
-            if user.is_active and should_send(user, notice_type, backend.slug):
-                recipients.append(user)
-
-            if recipients:
-                try:
-                    backend.send(messages['subject.txt'], messages['message.txt'], recipients)
-                except TypeError, e:
-                    print u"Tried to send notification to media %s. Send function raised an error." % (backend.title,)
-                    raise e
+            send_user_notification(user, notice_type, backend, context)
 
     # reset environment to original language
     activate(current_language)
+
+def send_user_notification(user, notice_type, backend, context):
+
+    recipients = []
+
+    # get prerendered format messages
+    messages = get_formatted_messages(TEMPLATES_FORMATS, notice_type, context, backend.slug)
+
+    if user.is_active and should_send(user, notice_type, backend.slug):
+        recipients.append(user)
+
+    if recipients:
+        try:
+            backend.send(messages['subject.txt'], messages['message.txt'], recipients)
+        except TypeError, e:
+            print u"Tried to send notification to media %s. Send function raised an error." % (backend.title,)
+            raise e
+
 
 def send(*args, **kwargs):
     """

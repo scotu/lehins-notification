@@ -9,13 +9,13 @@ class Migration(DataMigration):
     def forwards(self, orm):
         "Write your forwards methods here."
 
-        orm.NoticeSetting.objects.filter(medium='1').update(medium='notification-email')
-        orm.NoticeSetting.objects.filter(medium='2').update(medium='notification-sms')
+        orm.NoticeSetting.objects.filter(medium='1').update(medium='email')
+        orm.NoticeSetting.objects.filter(medium='2').update(medium='sms')
 
     def backwards(self, orm):
         "Write your backwards methods here."
-        orm.NoticeSetting.objects.filter(medium='notification-email').update(medium='1')
-        orm.NoticeSetting.objects.filter(medium='notification-sms').update(medium='2')
+        orm.NoticeSetting.objects.filter(medium='email').update(medium='1')
+        orm.NoticeSetting.objects.filter(medium='sms').update(medium='2')
 
     models = {
         'auth.group': {
