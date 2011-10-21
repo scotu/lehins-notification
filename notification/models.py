@@ -347,7 +347,7 @@ def send_user_notification(user, notice_type, backend, context):
 
     if recipients:
         try:
-            backend.send(messages['subject.txt'], messages['message.txt'], recipients)
+            backend.send(' '.join(messages['subject.txt'].splitlines()), messages['message.txt'], recipients)
         except TypeError, e:
             print u"Tried to send notification to media %s. Send function raised an error." % (backend.title,)
             raise e
