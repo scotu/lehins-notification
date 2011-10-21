@@ -31,10 +31,11 @@ class SMSBackend(NotificationBackend):
             numbers = self.get_numbers(recipients)
 
             if numbers:
+                sender = getattr(settings, 'SMS_SENDER', None)
                 if settings.DEBUG:
-                    print "SMS To:%s Body:%s" % (numbers, body)
+                    print "SMS To:%s Sender:%s Body:%s" % (numbers, sender, body)
                 if getattr(settings, 'SEND_SMS', False):
-                    return sendSMS( numbers, body, settings.SMS_GATEWAY_USERNAME, settings.SMS_GATEWAY_PASSWORD )
+                    return sendSMS(numbers, body, settings.SMS_GATEWAY_USERNAME, settings.SMS_GATEWAY_PASSWORD, sender=sender)
                 else:
                     print "In order to send SMS notifications add SEND_SMS = True in settings"
         else:
