@@ -101,14 +101,31 @@ class NoticeSetting(models.Model):
         verbose_name_plural = _("notice settings")
         unique_together = ("user", "notice_type", "medium")
 
-def get_notification_setting(user, notice_type, medium):
-    try:
-        return NoticeSetting.objects.get(user=user, notice_type=notice_type, medium=medium)
-    except NoticeSetting.DoesNotExist:
+def create_notification_setting(user, notice_type, medium):
         default = (get_backend(medium).sensitivity <= notice_type.default)
         setting = NoticeSetting(user=user, notice_type=notice_type, medium=medium, send=default)
         setting.save()
         return setting
+
+def get_notification_setting(user, notice_type, medium):
+    try:
+        return NoticeSetting.objects.get(user=user, notice_type=notice_type, medium=medium)
+    except NoticeSetting.DoesNotExist:
+        return create_notification_setting(user, notice_type, medium)
+
+def get_notification_settings(user, notification_label):
+    """
+        Gets NoticeSettings for notification_label and user for all medium registered.
+        Created Default ones if there is nothing.
+        Raises DoesNotExist for wrong label.
+    """
+    result = NoticeSetting.objects.filter(user=user, notice_type__label=notification_label)
+    if not result:
+        notice_type = NoticeType.objects.get(label=notification_label)
+        for id, medium in NoticeMediaListChoices():
+            create_notification_setting(user=user, notice_type=notice_type, medium=unicode(medium).lower())
+        result = NoticeSetting.objects.filter(user=user, notice_type__label=notification_label)
+    return result
 
 def should_send(user, notice_type, medium):
     return get_notification_setting(user, notice_type, medium).send
