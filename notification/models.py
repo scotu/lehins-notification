@@ -101,6 +101,10 @@ class NoticeSetting(models.Model):
         verbose_name_plural = _("notice settings")
         unique_together = ("user", "notice_type", "medium")
 
+    def __unicode__(self):
+        return self.medium
+
+
 def create_notification_setting(user, notice_type, medium):
         default = (get_backend(medium).sensitivity <= notice_type.default)
         setting = NoticeSetting(user=user, notice_type=notice_type, medium=medium, send=default)
@@ -227,7 +231,7 @@ class NoticeQueueBatch(models.Model):
     """
     pickled_data = models.TextField()
 
-def create_notice_type(label, display, description, default=2, verbosity=1):
+def create_notice_type(label, display, description, default=2, verbosity=1, slug=''):
     """
     Creates a new NoticeType.
 
@@ -245,12 +249,15 @@ def create_notice_type(label, display, description, default=2, verbosity=1):
         if default != notice_type.default:
             notice_type.default = default
             updated = True
+        if slug != notice_type.slug:
+            notice_type.slug = slug
+            updated = True
         if updated:
             notice_type.save()
             if verbosity > 1:
                 print "Updated %s NoticeType" % label
     except NoticeType.DoesNotExist:
-        NoticeType(label=label, display=display, description=description, default=default).save()
+        NoticeType.objects.create(label=label, display=display, description=description, default=default, slug=slug)
         if verbosity > 1:
             print "Created %s NoticeType" % label
 
