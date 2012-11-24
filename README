@@ -1,1 +1,1 @@
-Forked from django-notification, this adds backends for alternative delivery media
+Forked from incuna-notification, this adds backends for html email delivery
