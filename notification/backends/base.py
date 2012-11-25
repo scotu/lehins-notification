@@ -16,7 +16,12 @@ class NotificationBackend(object):
         """Pretty name for this delivery method."""
         raise NotImplemented
 
-    def send(self, subject, body, recipients, *args, **kwargs):
+    @property
+    def formats(self):
+        """List of template names that will be rendered."""
+        raise NotImplemented
+
+    def send(self, message, recipients, *args, **kwargs):
         """
         Send the notification.
         """

@@ -1,1 +1,17 @@
-Forked from incuna-notification, this adds backends for html email delivery
+Forked from incuna-notification.
+It is backwards compatible with incuna-notification, except the backend specification.
+Added features:
+* ``HTMLEmailBackend`` that supports html email content as an alternative
+* backends can specify names for the templates, so they are no longer limited
+  only to ``message.txt`` and ``subject.txt``. 
+  ``notice.html`` is the only required template (in case if backend list is empty)
+* Can specify context processors for email rendering with 
+  ``NOTIFICATION_CONTEXT_PROCESSORS`` setting, which are just like django context 
+  processors, except they don't have request argument
+Backend changes:
+* required ``formats`` property, which is a list of template names, relevant to a
+  message.
+* ``send`` method takes ``message`` argument, instead of subject and body
+  strings. ``message`` now is a dictonary of rendered templates specified in 
+  ``formats`` property, having there names as keys. See supplied backends for 
+  examples.

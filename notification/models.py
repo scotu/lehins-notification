@@ -1,4 +1,4 @@
-import datetime
+import datetime, importlib
 
 try:
     import cPickle as pickle
@@ -32,10 +32,11 @@ from notification.backends import get_backends, get_backend
     or notification/
 """
 
-TEMPLATES_FORMATS = getattr(settings, "NOTIFICATION_TEMPLATES_FORMATS", 
-                            ('subject.txt', 'message.txt', 'notice.html',))
+CONTEXT_PROCESSORS = getattr(
+    settings, "NOTIFICATION_CONTEXT_PROCESSORS", None)
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
+ENFORCE_QUEUE_ALL = getattr(settings, "NOTIFICATION_ENFORCE_QUEUE_ALL", False)
 
 
 class LanguageStoreNotAvailable(Exception):
@@ -278,20 +279,34 @@ def get_notification_language(user):
             raise LanguageStoreNotAvailable
     raise LanguageStoreNotAvailable
 
-def get_formatted_messages(formats, notice_type, context, media_slug=None):
+def from_string_import(string):
+    """
+    Returns the attribute from a module, specified by a string.
+    """
+    module, attrib = string.rsplit('.', 1)
+    return getattr(importlib.import_module(module), attrib)
+
+
+def get_formatted_message(formats, notice_type, context, media_slug=None):
     """
     Returns a dictionary with the format identifier as the key. The values are
     are fully rendered templates with the given context.
     """
     format_templates = {}
+    if context is None:
+        context = {}
+    if CONTEXT_PROCESSORS:
+        for c_p in [from_string_import(x) for x in CONTEXT_PROCESSORS]:
+            context.update(c_p())
     for format in formats:
         # conditionally turn off autoescaping for .txt extensions in format
-        if format.endswith(".txt"):
+        if format.endswith(".txt") or format.endswith(".html"):
             context.autoescape = False
         else:
             context.autoescape = True
         format_templates[format] = render_to_string((
-            'notification/%s/%s/%s' % (notice_type.template_slug, media_slug, format),
+            'notification/%s/%s/%s' % (
+                    notice_type.template_slug, media_slug, format),
             'notification/%s/%s' % (notice_type.template_slug, format),
             'notification/%s/%s' % (media_slug, format),
             'notification/%s' % format), context_instance=context)
@@ -349,7 +364,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         })
         context.update(extra_context)
 
-        messages = get_formatted_messages(['notice.html'], notice_type, context, 'notice')
+        messages = get_formatted_message(['notice.html'], notice_type, context, 'notice')
         notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
             notice_type=notice_type, on_site=on_site, sender=sender)
 
@@ -364,14 +379,15 @@ def send_user_notification(user, notice_type, backend, context):
     recipients = []
 
     # get prerendered format messages
-    messages = get_formatted_messages(TEMPLATES_FORMATS, notice_type, context, backend.slug)
+    message = get_formatted_message(
+        backend.formats, notice_type, context, backend.slug)
 
     if user.is_active and should_send(user, notice_type, backend.slug):
         recipients.append(user)
 
     if recipients:
         try:
-            backend.send(' '.join(messages['subject.txt'].splitlines()), messages['message.txt'], recipients)
+            backend.send(message, recipients)
         except TypeError, e:
             print u"Tried to send notification to media %s. Send function raised an error." % (backend.title,)
             raise e
@@ -386,8 +402,9 @@ def send(*args, **kwargs):
     """
     queue_flag = kwargs.pop("queue", False)
     now_flag = kwargs.pop("now", False)
+    celery_flag = kwargs.pop("async", False)
     assert not (queue_flag and now_flag), "'queue' and 'now' cannot both be True."
-    if queue_flag:
+    if queue_flag or ENFORCE_QUEUE_ALL:
         return queue(*args, **kwargs)
     elif now_flag:
         return send_now(*args, **kwargs)

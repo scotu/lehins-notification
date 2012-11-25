@@ -16,6 +16,7 @@ class SMSBackend(NotificationBackend):
     
     title = _("SMS")
     slug = 'sms'
+    formats = ('subject.txt', 'message.txt')
 
     def get_numbers(self, recipients):
         numbers = []
@@ -26,7 +27,9 @@ class SMSBackend(NotificationBackend):
 
         return numbers
 
-    def send(self, subject, body, recipients, *args, **kwargs):
+    def send(self, message, recipients, *args, **kwargs):
+        subject = ' '.join(message['subject.txt'].splitlines())
+        body = message['message.txt']       
         if hasattr(settings, 'SMS_GATEWAY_USERNAME') and hasattr(settings, 'SMS_GATEWAY_PASSWORD'):
             numbers = self.get_numbers(recipients)
 
