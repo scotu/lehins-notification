@@ -32,8 +32,8 @@ def load_backend(path):
 
     if not callable(cls.send):
         raise ImproperlyConfigured("Notification backend `send` method is not callable. Please define it in %s." % cls)
-
     return cls()
+
 
 def get_backends():
     slugs = []
@@ -49,14 +49,13 @@ def get_backends():
             else:
                 slugs.append(backend.slug)
                 BACKENDS.append(backend)
-
     return BACKENDS
+
 
 def get_backend(slug):
     for b in get_backends():
         if b.slug == slug:
             return b
-
     raise ValueError("Notification backend for slug %s not found. Is NOTIFICATION_BACKENDS correctly defined." % slug)
 
 
