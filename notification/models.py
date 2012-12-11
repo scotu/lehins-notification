@@ -259,9 +259,10 @@ def create_notice_type(label, display, description, default=2, verbosity=1, slug
             if verbosity > 1:
                 print "Updated %s NoticeType" % label
     except NoticeType.DoesNotExist:
-        NoticeType.objects.create(label=label, display=display, description=description, default=default, slug=slug)
+        notice_type = NoticeType.objects.create(label=label, display=display, description=description, default=default, slug=slug)
         if verbosity > 1:
             print "Created %s NoticeType" % label
+    return notice_type
 
 def get_notification_language(user):
     """
