@@ -193,6 +193,7 @@ class Notice(models.Model):
     unseen = models.BooleanField(_('unseen'), default=True)
     archived = models.BooleanField(_('archived'), default=False)
     on_site = models.BooleanField(_('on site'))
+    related_object_id = models.IntegerField(_('related object'), null=True)
 
     objects = NoticeManager()
 
@@ -312,7 +313,7 @@ def get_formatted_message(formats, notice_type, context, media_slug=None):
             'notification/%s' % format), context_instance=context)
     return format_templates
 
-def send_now(users, label, extra_context=None, on_site=True, sender=None):
+def send_now(users, label, extra_context=None, on_site=True, sender=None, related_object_id=None):
     """
     Creates a new notice.
 
@@ -365,8 +366,9 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         context.update(extra_context)
 
         messages = get_formatted_message(['notice.html'], notice_type, context, 'notice')
-        notice = Notice.objects.create(recipient=user, message=messages['notice.html'],
-            notice_type=notice_type, on_site=on_site, sender=sender)
+        notice = Notice.objects.create(
+            recipient=user, message=messages['notice.html'], notice_type=notice_type,
+            on_site=on_site, sender=sender, related_object_id=related_object_id)
 
         for backend in get_backends():
             send_user_notification(user, notice_type, backend, context)
@@ -414,7 +416,7 @@ def send(*args, **kwargs):
         else:
             return send_now(*args, **kwargs)
         
-def queue(users, label, extra_context=None, on_site=True, sender=None):
+def queue(users, label, extra_context=None, on_site=True, sender=None, related_object_id=None):
     """
     Queue the notification in NoticeQueueBatch. This allows for large amounts
     of user notifications to be deferred to a seperate process running outside
@@ -428,7 +430,8 @@ def queue(users, label, extra_context=None, on_site=True, sender=None):
         users = [user.pk for user in users]
     notices = []
     for user in users:
-        notices.append((user, label, extra_context, on_site, sender))
+        notices.append(
+            (user, label, extra_context, on_site, sender, related_object_id))
     NoticeQueueBatch(pickled_data=pickle.dumps(notices).encode("base64")).save()
 
 class ObservedItemManager(models.Manager):
