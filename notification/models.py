@@ -27,7 +27,6 @@ from django.utils.translation import ugettext, get_language, activate
 from notification.backends import get_backends, get_backend
 
 """
-    notice.html is used for saving Notice object content
     subject.txt and message.txt can be put either in notification/noticetype_label/media_slug or notification/noticetype_label/
     or notification/
 """
@@ -36,7 +35,6 @@ CONTEXT_PROCESSORS = getattr(
     settings, "NOTIFICATION_CONTEXT_PROCESSORS", None)
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
-ENFORCE_QUEUE_ALL = getattr(settings, "NOTIFICATION_ENFORCE_QUEUE_ALL", False)
 
 
 class LanguageStoreNotAvailable(Exception):
@@ -44,9 +42,9 @@ class LanguageStoreNotAvailable(Exception):
 
 class NoticeType(models.Model):
 
-    label = models.CharField(_('label'), max_length=40)
-    display = models.CharField(_('display'), max_length=50)
-    description = models.CharField(_('description'), max_length=100)
+    label = models.CharField(_('label'), max_length=40, unique=True)
+    display = models.CharField(_('display'), max_length=100)
+    description = models.TextField(_('description'))
     slug = models.CharField(_('template folder slug'), max_length=40, blank=True)
 
     # by default only on for media with sensitivity less than or equal to this number
@@ -96,6 +94,7 @@ class NoticeSetting(models.Model):
     notice_type = models.ForeignKey(NoticeType, verbose_name=_('notice type'))
     medium = models.CharField(_('medium'), max_length=100, choices=NoticeMediaListChoices())
     send = models.BooleanField(_('send'))
+    on_site = models.BooleanField(_('on site'), default=True)
 
     class Meta:
         verbose_name = _("notice setting")
@@ -407,7 +406,7 @@ def send(*args, **kwargs):
     now_flag = kwargs.pop("now", False)
     celery_flag = kwargs.pop("async", False)
     assert not (queue_flag and now_flag), "'queue' and 'now' cannot both be True."
-    if queue_flag or ENFORCE_QUEUE_ALL:
+    if queue_flag:
         return queue(*args, **kwargs)
     elif now_flag:
         return send_now(*args, **kwargs)
