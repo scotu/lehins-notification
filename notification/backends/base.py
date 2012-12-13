@@ -26,7 +26,8 @@ class NotificationBackend(object):
         Send the notification.
         """
         raise NotImplemented
-
+    
+    @property
     def sensitivity(self):
         """spam-sensitivity for this delivery method."""
         return 2
