@@ -4,6 +4,9 @@ from django.http import HttpResponseRedirect, Http404
 from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.contrib.syndication.views import Feed
+#from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from crowdsite.utils.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from notification.models import *
 from notification.decorators import basic_auth_required, simple_basic_auth_callback
@@ -22,7 +25,7 @@ def feed_for_user(request):
 
 
 @login_required
-def notices(request):
+def notices(request, template_name="notification/notices.html", extra_context=None):
     """
     The main notices index view.
     
@@ -35,10 +38,20 @@ def notices(request):
             and to be displayed on the site.
     """
     notices = Notice.objects.notices_for(request.user, on_site=True)
-    
-    return render_to_response("notification/notices.html", {
-        "notices": notices,
-    }, context_instance=RequestContext(request))
+    paginator = Paginator(notices, 15)
+
+    page = request.GET.get('page')
+    try:
+        notices = paginator.page(page)
+    except PageNotAnInteger:
+        notices = paginator.page(1)
+    except EmptyPage:
+        notices = paginator.page(paginator.num_pages)
+    context = {"notices": notices,}
+    if extra_context:
+        context.update(extra_context)
+    return render_to_response(
+        template_name, context, context_instance=RequestContext(request))
 
 
 @login_required

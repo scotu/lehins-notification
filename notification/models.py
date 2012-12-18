@@ -106,14 +106,16 @@ class NoticeSetting(models.Model):
 
 
 def create_notification_setting(user, notice_type, medium):
-        default = (get_backend(medium).sensitivity <= notice_type.default)
-        setting = NoticeSetting(user=user, notice_type=notice_type, medium=medium, send=default)
-        setting.save()
-        return setting
+    default = (get_backend(medium).sensitivity <= notice_type.default)
+    setting = NoticeSetting(
+        user=user, notice_type=notice_type, medium=medium, send=default)
+    setting.save()
+    return setting
 
 def get_notification_setting(user, notice_type, medium):
     try:
-        return NoticeSetting.objects.get(user=user, notice_type=notice_type, medium=medium)
+        return NoticeSetting.objects.get(
+            user=user, notice_type=notice_type, medium=medium)
     except NoticeSetting.DoesNotExist:
         return create_notification_setting(user, notice_type, medium)
 
@@ -123,12 +125,15 @@ def get_notification_settings(user, notification_label):
         Created Default ones if there is nothing.
         Raises DoesNotExist for wrong label.
     """
-    result = NoticeSetting.objects.filter(user=user, notice_type__label=notification_label)
+    result = NoticeSetting.objects.filter(
+        user=user, notice_type__label=notification_label)
     if not result:
         notice_type = NoticeType.objects.get(label=notification_label)
         for id, medium in NoticeMediaListChoices():
-            create_notification_setting(user=user, notice_type=notice_type, medium=unicode(medium).lower())
-        result = NoticeSetting.objects.filter(user=user, notice_type__label=notification_label)
+            create_notification_setting(
+                user=user, notice_type=notice_type, medium=unicode(medium).lower())
+        result = NoticeSetting.objects.filter(
+            user=user, notice_type__label=notification_label)
     return result
 
 def should_send(user, notice_type, medium):
@@ -313,7 +318,7 @@ def get_formatted_message(formats, notice_type, context, media_slug=None):
             'notification/%s' % format), context_instance=context)
     return format_templates
 
-def send_now(users, label, extra_context=None, on_site=True, sender=None, related_object_id=None):
+def send_now(users, label, extra_context=None, on_site=None, sender=None, related_object_id=None):
     """
     Creates a new notice.
 
@@ -364,8 +369,12 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None, relate
             "current_site": current_site,
         })
         context.update(extra_context)
-
-        messages = get_formatted_message(['notice.html'], notice_type, context, 'notice')
+        
+        messages = get_formatted_message(
+            ['notice.html'], notice_type, context, 'notice')
+        notice_setting = get_notification_setting(user, notice_type, 'email')
+        if on_site is None:
+            on_site = notice_setting.on_site
         notice = Notice.objects.create(
             recipient=user, message=messages['notice.html'], notice_type=notice_type,
             on_site=on_site, sender=sender, related_object_id=related_object_id)
