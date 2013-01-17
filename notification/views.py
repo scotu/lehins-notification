@@ -4,9 +4,7 @@ from django.http import HttpResponseRedirect, Http404
 from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.contrib.syndication.views import Feed
-#from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
-from crowdsite.utils.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from notification.models import *
 from notification.decorators import basic_auth_required, simple_basic_auth_callback

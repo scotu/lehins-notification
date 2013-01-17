@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 from notification.backends.base import NotificationBackend
 from HTMLParser import HTMLParser
 
+
 class EmailBackend(NotificationBackend):
     """
     Email delivery backend.

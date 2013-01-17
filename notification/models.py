@@ -15,9 +15,6 @@ from django.template.loader import render_to_string
 from django.core.exceptions import ImproperlyConfigured
 
 from django.contrib.sites.models import Site
-from django.contrib.auth.models import User
-from django.contrib.auth.models import AnonymousUser
-
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
 
@@ -35,13 +32,14 @@ CONTEXT_PROCESSORS = getattr(
     settings, "NOTIFICATION_CONTEXT_PROCESSORS", None)
 
 QUEUE_ALL = getattr(settings, "NOTIFICATION_QUEUE_ALL", False)
+USER_MODEL = getattr(settings, 'AUTH_USER_MODEL', 'auth.User')
 
 
 class LanguageStoreNotAvailable(Exception):
     pass
 
-class NoticeType(models.Model):
 
+class NoticeType(models.Model):
     label = models.CharField(_('label'), max_length=40, unique=True)
     display = models.CharField(_('display'), max_length=100)
     description = models.TextField(_('description'))
@@ -89,8 +87,7 @@ class NoticeSetting(models.Model):
     Indicates, for a given user, whether to send notifications
     of a given type to a given medium.
     """
-
-    user = models.ForeignKey(User, verbose_name=_('user'))
+    user = models.ForeignKey(USER_MODEL, verbose_name=_("user"))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_('notice type'))
     medium = models.CharField(_('medium'), max_length=100, choices=NoticeMediaListChoices())
     send = models.BooleanField(_('send'))
@@ -172,14 +169,14 @@ class NoticeManager(models.Manager):
         mark them seen
         """
         return self.notices_for(recipient, unseen=True, **kwargs).count()
-    
+
     def received(self, recipient, **kwargs):
         """
         returns notices the given recipient has recieved.
         """
         kwargs["sent"] = False
         return self.notices_for(recipient, **kwargs)
-    
+
     def sent(self, sender, **kwargs):
         """
         returns notices the given sender has sent
@@ -188,9 +185,8 @@ class NoticeManager(models.Manager):
         return self.notices_for(sender, **kwargs)
 
 class Notice(models.Model):
-
-    recipient = models.ForeignKey(User, related_name='recieved_notices', verbose_name=_('recipient'))
-    sender = models.ForeignKey(User, null=True, related_name='sent_notices', verbose_name=_('sender'))
+    recipient = models.ForeignKey(USER_MODEL, related_name="recieved_notices", verbose_name=_("recipient"))
+    sender = models.ForeignKey(USER_MODEL, null=True, related_name="sent_notices", verbose_name=_("sender"))
     message = models.TextField(_('message'))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_('notice type'))
     added = models.DateTimeField(_('added'), auto_now_add=True)
@@ -227,8 +223,12 @@ class Notice(models.Model):
         verbose_name_plural = _("notices")
 
     def get_absolute_url(self):
+        return reverse("notification_notice", args=[str(self.pk)])
+
+    def get_absolute_url(self):
         return ("notification_notice", [str(self.pk)])
     get_absolute_url = models.permalink(get_absolute_url)
+
 
 class NoticeQueueBatch(models.Model):
     """
@@ -236,6 +236,7 @@ class NoticeQueueBatch(models.Model):
     Denormalized data for a notice.
     """
     pickled_data = models.TextField()
+
 
 def create_notice_type(label, display, description, default=2, verbosity=1, slug=''):
     """
@@ -324,11 +325,11 @@ def send_now(users, label, extra_context=None, on_site=None, sender=None, relate
 
     This is intended to be how other apps create new notices.
 
-    notification.send(user, 'friends_invite_sent', {
-        'spam': 'eggs',
-        'foo': 'bar',
+    notification.send(user, "friends_invite_sent", {
+        "spam": "eggs",
+        "foo": "bar",
     )
-    
+
     You can pass in on_site=False to prevent the notice emitted from being
     displayed on the site.
     """
@@ -339,12 +340,6 @@ def send_now(users, label, extra_context=None, on_site=None, sender=None, relate
 
     protocol = getattr(settings, "DEFAULT_HTTP_PROTOCOL", "http")
     current_site = Site.objects.get_current()
-
-    notices_url = u"%s://%s%s" % (
-        protocol,
-        unicode(current_site),
-        reverse("notification_notices"),
-    )
 
     current_language = get_language()
 
@@ -365,7 +360,6 @@ def send_now(users, label, extra_context=None, on_site=None, sender=None, relate
             "recipient": user,
             "sender": sender,
             "notice": ugettext(notice_type.display),
-            "notices_url": notices_url,
             "current_site": current_site,
         })
         context.update(extra_context)
@@ -461,8 +455,7 @@ class ObservedItemManager(models.Manager):
 
 
 class ObservedItem(models.Model):
-
-    user = models.ForeignKey(User, verbose_name=_('user'))
+    user = models.ForeignKey(USER_MODEL, verbose_name=_("user"))
 
     content_type = models.ForeignKey(ContentType)
     object_id = models.PositiveIntegerField()
@@ -478,9 +471,9 @@ class ObservedItem(models.Model):
     objects = ObservedItemManager()
 
     class Meta:
-        ordering = ['-added']
-        verbose_name = _('observed item')
-        verbose_name_plural = _('observed items')
+        ordering = ["-added"]
+        verbose_name = _("observed item")
+        verbose_name_plural = _("observed items")
 
     def send_notice(self, extra_context=None):
         if extra_context is None:
@@ -518,8 +511,9 @@ def send_observation_notices_for(observed, signal='post_save', extra_context=Non
         observed_item.send_notice(extra_context)
     return observed_items
 
-def is_observing(observed, observer, signal='post_save'):
-    if isinstance(observer, AnonymousUser):
+
+def is_observing(observed, observer, signal="post_save"):
+    if hasattr(observer, 'is_anonymous') and observer.is_anonymous():
         return False
     try:
         observed_items = ObservedItem.objects.get_for(observed, observer, signal)
