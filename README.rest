@@ -13,6 +13,7 @@ It is backwards compatible with incuna-notification, except the backend specific
 
 **Added features:**
 
+* ``MobileBackend`` that supports push notifications to IOS/Android devices
 * ``HTMLEmailBackend`` that supports html email content as an alternative
 * backends can specify names for the templates, so they are no longer limited only to ``message.txt`` and ``subject.txt``. ``notice.html`` is the only (in case of empty backend list) required template
 * Can specify context processors for email rendering with ``NOTIFICATION_CONTEXT_PROCESSORS`` setting, which are just like django context processors, except they don't have request argument
