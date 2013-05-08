@@ -319,7 +319,7 @@ def get_formatted_message(formats, notice_type, context, media_slug=None):
             'notification/%s' % format), context_instance=context)
     return format_templates
 
-def send_now(users, label, extra_context=None, on_site=None, sender=None, related_object_id=None):
+def send_now(users, label, extra_context=None, on_site=None, sender=None, related_object_id=None, backends=get_backends()):
     """
     Creates a new notice.
 
