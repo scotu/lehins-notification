@@ -373,6 +373,9 @@ def send_now(users, label, extra_context=None, on_site=None, sender=None, relate
             recipient=user, message=messages['notice.html'], notice_type=notice_type,
             on_site=on_site, sender=sender, related_object_id=related_object_id)
 
+        if len(backends) > 0 and isinstance(backends[0], str):
+            backends = get_backends(backends)
+
         for backend in backends:
             send_user_notification(user, notice_type, backend, context)
 

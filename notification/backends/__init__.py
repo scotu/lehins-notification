@@ -35,10 +35,10 @@ def load_backend(path):
     return cls()
 
 
-def get_backends():
+def get_backends(MY_BACKENDS=NOTIFICATION_BACKENDS):
     slugs = []
     if not BACKENDS:
-        for backend_path in NOTIFICATION_BACKENDS:
+        for backend_path in MY_BACKENDS:
             backend  = load_backend(backend_path)
 
             if backend.slug in slugs:
