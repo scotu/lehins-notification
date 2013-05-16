@@ -37,6 +37,7 @@ class MobileBackend(NotificationBackend):
             else:
                 del msg_dev['aps']
                 
+            print 'Sending notification to device: '+str(dev)
             dev.send_message(msg_dev)
         return True
 

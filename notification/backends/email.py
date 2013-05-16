@@ -63,6 +63,8 @@ class HTMLEmailBackend(EmailBackend):
             email = EmailMultiAlternatives(
                 subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
             email.attach_alternative(body_html, "text/html")
+            print 'Sending email to: ' + str(addresses)
             email.send()
+            import time; time.sleep(2)
             return email
 
