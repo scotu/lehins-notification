@@ -64,7 +64,14 @@ class HTMLEmailBackend(EmailBackend):
                 subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
             email.attach_alternative(body_html, "text/html")
             print 'Sending email to: ' + str(addresses)
-            email.send()
-            import time; time.sleep(2)
+            while True:
+                try:
+                    email.send()
+                    print 'Email Sent Ok!'
+                    break
+                except:
+                    print 'Waiting to try again'
+                    import time; time.sleep(4)
+
             return email
 
