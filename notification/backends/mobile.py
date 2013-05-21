@@ -6,6 +6,32 @@ from push_notifications.models import APNSDevice, GCMDevice
 import json
 import copy
 
+def _decode_list(data):
+    rv = []
+    for item in data:
+        if isinstance(item, unicode):
+            item = item.encode('utf-8')
+        elif isinstance(item, list):
+            item = _decode_list(item)
+        elif isinstance(item, dict):
+            item = _decode_dict(item)
+        rv.append(item)
+    return rv
+
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+           key = key.encode('utf-8')
+        if isinstance(value, unicode):
+           value = value.encode('utf-8')
+        elif isinstance(value, list):
+           value = _decode_list(value)
+        elif isinstance(value, dict):
+           value = _decode_dict(value)
+        rv[key] = value
+    return rv
+
 class MobileBackend(NotificationBackend):
     """
     Mobile (IOS/Android) delivery backend.
@@ -28,7 +54,7 @@ class MobileBackend(NotificationBackend):
     def send(self, message, recipients, *args, **kwargs):
         msg = message['message.txt']
         devices = self.get_devices(recipients)
-        json_msg = json.loads(msg)
+        json_msg = json.loads(msg, object_hook=_decode_dict)
         
         for dev in devices:
             msg_dev = copy.copy(json_msg)
