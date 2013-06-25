@@ -9,17 +9,21 @@ class EmailBackend(NotificationBackend):
     """
     Email delivery backend.
     """
-    
-    title = _("Email")
+    id = 4
+    title = _("By Email")
     slug = 'email'
     formats = ('subject.txt', 'message.txt')
 
     def get_addresses(self, recipients):
         addresses = []
-        for recipient in recipients:
-            addresse = getattr(recipient, 'email', None)
-            if addresse:
-                addresses.append(addresse)
+        try:
+            iter_recipients = iter(recipients)
+        except TypeError:
+            iter_recipients = iter([recipients])
+        for recipient in iter_recipients:
+            address = getattr(recipient, 'email', None)
+            if address:
+                addresses.append(address)
 
         return addresses
 
@@ -54,11 +58,11 @@ class HTMLEmailBackend(EmailBackend):
         return s.get_data()
 
     def send(self, messages, recipients, *args, **kwargs):
-        subject = ' '.join(messages['subject.txt'].splitlines())
-        body_html = messages['message.html']
-        body = self._strip_tags(body_html)
         addresses = self.get_addresses(recipients)
         if addresses:
+            subject = ' '.join(messages['subject.txt'].splitlines())
+            body_html = messages['message.html']
+            body = self._strip_tags(body_html)
             email = EmailMultiAlternatives(
                 subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
             email.attach_alternative(body_html, "text/html")

@@ -2,13 +2,22 @@ class NotificationBackend(object):
     """
     Abstract base delivery backend.
     """
+    # set passive = True if backend is not capable of sending.
+    passive = False
 
     def __unicode__(self):
         return unicode(self.title)
 
     @property
+    def id(self):
+        """
+        Uniquely identify this backend delivery method with an integer powers of 2.
+        """
+        raise NotImplemented
+
+    @property
     def slug(self):
-        """Uniquely identify this backenddelivery method."""
+        """Uniquely identify this backend delivery method."""
         raise NotImplemented
 
     @property
