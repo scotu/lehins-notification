@@ -2,7 +2,7 @@ from django.contrib import admin
 from notification.models import NoticeType, NoticeSetting, Notice
 
 class NoticeTypeAdmin(admin.ModelAdmin):
-    list_display = ('label', 'display', 'description', 'default')
+    list_display = ('label', 'display', 'description', 'default', 'allowed')
 
 class NoticeSettingAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'notice_type', 'medium', 'send')
