@@ -308,8 +308,7 @@ def create_notice_type(label, display, description, default=2, verbosity=1, slug
     kwargs = {'label': label,
               'display': display,
               'description': description,
-              'default': default,
-              'slug': slug}
+              'default': default}
     notice_type_qs = NoticeType.objects.filter(label=label)
     if notice_type_qs:
         notice_type_qs.update(**kwargs)
