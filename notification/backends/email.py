@@ -66,7 +66,8 @@ class HTMLEmailBackend(EmailBackend):
 
             email = EmailMultiAlternatives(
                 subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
-            email.extra_headers = {'X-SMTPAPI':{"category": notification_type}}
+            if notification_type:
+                email.extra_headers = {'X-SMTPAPI':'{"category": "%s"}' % notification_type}
             email.attach_alternative(body_html, "text/html")
             print 'Sending email to: ' + str(addresses)
             while True:
