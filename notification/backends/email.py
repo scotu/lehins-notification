@@ -29,7 +29,15 @@ class EmailBackend(NotificationBackend):
         body = message['message.txt']
         addresses = self.get_addresses(recipients)
         if addresses:
-            return send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
+            user_sender = kwargs.pop('overwrite_sender', False)
+            if user_sender:
+                try:
+                    sender_email = user_sender.email
+                except:
+                    sender_email = settings.DEFAULT_FROM_EMAIL
+            else:
+                sender_email = settings.DEFAULT_FROM_EMAIL
+            return send_mail(subject, body, sender_email, addresses)
 
 
 class MLStripper(HTMLParser):
@@ -64,8 +72,17 @@ class HTMLEmailBackend(EmailBackend):
             if 'notification_type' in kwargs:
                 notification_type = kwargs.pop('notification_type')
 
+            user_sender = kwargs.pop('overwrite_sender', False)
+            if user_sender:
+                try:
+                    sender_email = user_sender.email
+                except:
+                    sender_email = settings.DEFAULT_FROM_EMAIL
+            else:
+                sender_email = settings.DEFAULT_FROM_EMAIL
+
             email = EmailMultiAlternatives(
-                subject, body, settings.DEFAULT_FROM_EMAIL, addresses)
+                subject, body, sender_email, addresses)
             if notification_type:
                 email.extra_headers = {'X-SMTPAPI':'{"category": "%s"}' % notification_type}
             email.attach_alternative(body_html, "text/html")
