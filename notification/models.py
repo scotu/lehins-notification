@@ -395,6 +395,7 @@ def send_user_notification(user, notice_type, backend, context):
 
     if recipients:
         try:
+            kwargs = {}
             kwargs['notification_type'] = notice_type.label
             if 'sender' in context and context['sender']:
                 kwargs['overwrite_sender'] = context.get('sender')
