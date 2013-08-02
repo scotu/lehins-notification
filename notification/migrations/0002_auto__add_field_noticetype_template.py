@@ -8,59 +8,15 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding model 'NoticeType'
-        db.create_table(u'notification_noticetype', (
-            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('label', self.gf('django.db.models.fields.CharField')(unique=True, max_length=40)),
-            ('display', self.gf('django.db.models.fields.CharField')(max_length=100)),
-            ('description', self.gf('django.db.models.fields.TextField')()),
-            ('default', self.gf('django.db.models.fields.SmallIntegerField')(default=2)),
-            ('allowed', self.gf('django.db.models.fields.SmallIntegerField')(default=6)),
-        ))
-        db.send_create_signal(u'notification', ['NoticeType'])
-
-        # Adding model 'NoticeSetting'
-        db.create_table(u'notification_noticesetting', (
-            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('user', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['accounts.User'])),
-            ('notice_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['notification.NoticeType'])),
-            ('medium', self.gf('django.db.models.fields.CharField')(max_length=100)),
-            ('send', self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('uuid', self.gf('django.db.models.fields.CharField')(default='18289300-0593-43bc-a3a5-9acccc309506', max_length=36)),
-        ))
-        db.send_create_signal(u'notification', ['NoticeSetting'])
-
-        # Adding unique constraint on 'NoticeSetting', fields ['user', 'notice_type', 'medium']
-        db.create_unique(u'notification_noticesetting', ['user_id', 'notice_type_id', 'medium'])
-
-        # Adding model 'Notice'
-        db.create_table(u'notification_notice', (
-            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('recipient', self.gf('django.db.models.fields.related.ForeignKey')(related_name='recieved_notices', to=orm['accounts.User'])),
-            ('sender', self.gf('django.db.models.fields.related.ForeignKey')(related_name='sent_notices', null=True, to=orm['accounts.User'])),
-            ('notice_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['notification.NoticeType'])),
-            ('added', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
-            ('unseen', self.gf('django.db.models.fields.BooleanField')(default=True)),
-            ('archived', self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('on_site', self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('content_type', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['contenttypes.ContentType'], null=True)),
-            ('object_id', self.gf('django.db.models.fields.PositiveIntegerField')(null=True)),
-        ))
-        db.send_create_signal(u'notification', ['Notice'])
+        # Adding field 'NoticeType.template'
+        db.add_column(u'notification_noticetype', 'template',
+                      self.gf('django.db.models.fields.TextField')(default='', blank=True),
+                      keep_default=False)
 
 
     def backwards(self, orm):
-        # Removing unique constraint on 'NoticeSetting', fields ['user', 'notice_type', 'medium']
-        db.delete_unique(u'notification_noticesetting', ['user_id', 'notice_type_id', 'medium'])
-
-        # Deleting model 'NoticeType'
-        db.delete_table(u'notification_noticetype')
-
-        # Deleting model 'NoticeSetting'
-        db.delete_table(u'notification_noticesetting')
-
-        # Deleting model 'Notice'
-        db.delete_table(u'notification_notice')
+        # Deleting field 'NoticeType.template'
+        db.delete_column(u'notification_noticetype', 'template')
 
 
     models = {
@@ -121,7 +77,7 @@ class Migration(SchemaMigration):
             'notice_type': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['notification.NoticeType']"}),
             'send': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['accounts.User']"}),
-            'uuid': ('django.db.models.fields.CharField', [], {'default': "'77184b8c-024e-4add-b9bd-b78eeba1a848'", 'max_length': '36'})
+            'uuid': ('django.db.models.fields.CharField', [], {'default': "'a2a6935f-7a05-484d-8f72-f99b09757b01'", 'max_length': '36'})
         },
         u'notification.noticetype': {
             'Meta': {'ordering': "['label']", 'object_name': 'NoticeType'},
@@ -130,7 +86,8 @@ class Migration(SchemaMigration):
             'description': ('django.db.models.fields.TextField', [], {}),
             'display': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'label': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '40'})
+            'label': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '40'}),
+            'template': ('django.db.models.fields.TextField', [], {'blank': 'True'})
         }
     }
 

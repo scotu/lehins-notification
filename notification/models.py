@@ -7,16 +7,17 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User as AuthUser
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
+from django.template.base import Template, Context
+from django.template.loader import render_to_string
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from notification.backends import get_backends, get_backend
 from notification.tasks import send_notice
-
+from notification.utils import apply_context_processors
 
 __all__ = ["NoticeType", "NoticeSetting", "Notice", "send"]
 
-CONTEXT_PROCESSORS = getattr(
-    settings, "NOTIFICATION_CONTEXT_PROCESSORS", None)
 
 DELAY_ALL = getattr(settings, "NOTIFICATION_DELAY_ALL", True)
 
@@ -38,6 +39,8 @@ class NoticeType(models.Model):
         verbose_name=u"Allowed", default=6, help_text=u"Sum of the media type's "
         "ids stored in backends dictate if the particular medium notification "
         "can be switch off/on by a user. Currently 2-on_site, 4-email")
+    template = models.TextField(
+        blank=True, help_text="Template that will be used in rendering the notice.")
 
     def __unicode__(self):
         return self.label
@@ -219,8 +222,8 @@ class Notice(models.Model):
 
     objects = NoticeManager()
 
-    def __unicode__(self):
-        return self.message
+    def __str__(self):
+        return self.notice_type.description
 
     def archive(self, commit=True):
         self.archived = True
@@ -240,13 +243,23 @@ class Notice(models.Model):
             self.save()
         return unseen
 
+    def render(self):
+        """
+        return mark_safe(render_to_string((
+            "notification/%s/onsite.html" % self.notice_type.template_slug,
+            "notification/onsite.html"), context={'notice': self}))
+        """
+        template = Template(self.notice_type.template, name=self.notice_type.label)
+        context = apply_context_processors({'notice':self})
+        return mark_safe(template.render(Context(context)))
+
+    def get_absolute_url(self):
+        return reverse("notification:notice", kwargs={'pk': self.pk})
+
     class Meta:
         ordering = ["-added"]
         verbose_name = _("notice")
         verbose_name_plural = _("notices")
-
-    def get_absolute_url(self):
-        return reverse("notification:notice", kwargs={'pk': self.pk})
 
 
 def smart_send(users, label, extra_context=None, sender=None, related_object=None, 
@@ -278,7 +291,7 @@ def smart_send(users, label, extra_context=None, sender=None, related_object=Non
             for setting in notice_settings:
                 if not get_backend(setting.medium).passive:
                     active_settings.append(setting)
-                elif setting.medium == 'on_site':
+                elif setting.medium == 'on_site' and setting.send:
                     on_site = True
             notice = Notice.objects.create(
                 recipient=user, notice_type=notice_type,
@@ -299,6 +312,7 @@ def send(*args, **kwargs):
         # for compatibility with postman
         if 'pm_message' in extra_context:
             kwargs['related_object'] = extra_context['pm_message']
+            kwargs['sender'] = extra_context['pm_message'].sender
     return smart_send(*args, **kwargs)
 
 

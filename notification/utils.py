@@ -18,6 +18,11 @@ def from_string_import(string):
     module, attrib = string.rsplit('.', 1)
     return getattr(importlib.import_module(module), attrib)
 
+def apply_context_processors(context):
+    for cp in [from_string_import(x) for x in CONTEXT_PROCESSORS]:
+        context.update(cp())
+    return context
+
 def get_formatted_message(formats, notice_type, context, medium):
     """
     Returns a dictionary with the format identifier as the key. The values are
@@ -33,8 +38,7 @@ def get_formatted_message(formats, notice_type, context, medium):
         'site': current_site,
     })
     format_templates = {}
-    for cp in [from_string_import(x) for x in CONTEXT_PROCESSORS]:
-        context.update(cp())
+    context = apply_context_processors(context)
     for format in formats:
         # conditionally turn off autoescaping for .txt extensions in format
         if format.endswith(".txt") or format.endswith(".html"):
