@@ -263,7 +263,7 @@ class Notice(models.Model):
 
 
 def smart_send(users, label, extra_context=None, sender=None, related_object=None, 
-               now=True):
+               now=False):
     """
     Creates a new notice.
 
