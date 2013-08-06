@@ -78,7 +78,10 @@ class HTMLEmailBackend(EmailBackend):
             user_sender = kwargs.pop('overwrite_sender', False)
             if user_sender:
                 try:
-                    sender_email = user_sender.email
+                    if user_sender.firstName:
+                        sender_email = '%s <%s>' % (user_sender.firstName, user_sender.email,)
+                    else:
+                        sender_email = user_sender.email
                 except:
                     sender_email = settings.DEFAULT_FROM_EMAIL
             else:
