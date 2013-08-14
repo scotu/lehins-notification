@@ -184,6 +184,8 @@ class NoticeManager(models.Manager):
             lookup_kwargs = {"sender": user}
         else:
             lookup_kwargs = {"recipient": user}
+        if 'archived' not in kwargs:
+            lwargs['archived'] = False
         return self.filter(**lookup_kwargs).filter(**kwargs)
 
     def unseen_count_for(self, recipient):
@@ -191,7 +193,8 @@ class NoticeManager(models.Manager):
         returns the number of unseen notices for the given user but does not
         mark them seen
         """
-        return self.notices_for(recipient, unseen=True, on_site=True).count()
+        return self.notices_for(
+            recipient, unseen=True, on_site=True, archived=False).count()
     
     def received(self, recipient, **kwargs):
         """
@@ -244,11 +247,6 @@ class Notice(models.Model):
         return unseen
 
     def render(self):
-        """
-        return mark_safe(render_to_string((
-            "notification/%s/onsite.html" % self.notice_type.template_slug,
-            "notification/onsite.html"), context={'notice': self}))
-        """
         template = Template(self.notice_type.template, name=self.notice_type.label)
         context = apply_context_processors({'notice':self})
         return mark_safe(template.render(Context(context)))
@@ -300,7 +298,9 @@ def smart_send(users, label, extra_context=None, sender=None, related_object=Non
                 if now or not DELAY_ALL:
                     send_notice(notice, active_settings, extra_context)
                 else:
-                    send_notice.delay(notice, active_settings, extra_context)
+                    send_notice.apply_async(
+                        args=(notice, active_settings, extra_context), 
+                        countdown=10)
         elif ENFORCE_CREATE:
             Notice.objects.create(
                 recipient=user, notice_type=notice_type,
