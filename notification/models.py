@@ -397,9 +397,9 @@ def send_user_notification(user, notice_type, backend, context):
         try:
             kwargs = {}
             kwargs['notification_type'] = notice_type.label
-            if 'sender_album_code' in context and context['sender_sender_album_code']:
+            if 'sender_album_code' in context and context['sender_album_code']:
                 kwargs['sender_album_code'] = context.get('sender_album_code')
-            if 'sender_album_title' in context and context['sender_sender_album_title']:
+            if 'sender_album_title' in context and context['sender_album_title']:
                 kwargs['sender_album_title'] = context.get('sender_album_title')
             if 'reply_to' in context and context['reply_to']:
                 kwargs['overwrite_reply_to'] = context.get('reply_to')
