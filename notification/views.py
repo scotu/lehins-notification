@@ -1,10 +1,20 @@
+from django.contrib.auth.decorators import login_required
+from django.contrib.syndication.views import Feed
 from django.core.urlresolvers import reverse
+from django.http import HttpResponseRedirect, HttpResponseForbidden, Http404
 from django.shortcuts import render_to_response, get_object_or_404
-from django.http import HttpResponseRedirect, Http404
 from django.template import RequestContext
+<<<<<<< HEAD
 from django.contrib.auth.decorators import login_required
 from django.contrib.syndication.views import Feed
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+=======
+from django.template.response import TemplateResponse
+from django.views.decorators.csrf import csrf_exempt
+#from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+from crowdsite.utils.paginator import Paginator, EmptyPage, PageNotAnInteger
+>>>>>>> 077f6d8bea0d51fda082fee14def15a51899c393
 
 from notification.models import *
 from notification.decorators import basic_auth_required, simple_basic_auth_callback
@@ -199,3 +209,19 @@ def mark_all_seen(request):
         notice.unseen = False
         notice.save()
     return HttpResponseRedirect(reverse("notification_notices"))
+
+@csrf_exempt
+def unsubscribe(request, uuid=None, token=None, extra_context=None, 
+                template_name='notification/unsubscribe.html',
+                template_name_post='notification/unsubscribe_post.html'):
+    notice_setting = get_object_or_404(NoticeSetting, uuid=uuid)
+    if token != notice_setting.token:
+        return HttpResponseForbidden("Invalid token.")
+    if request.method == 'POST':
+        notice_setting.send = False
+        notice_setting.save()
+        template_name = template_name_post
+    context = {'notice_setting': notice_setting}
+    if not extra_context is None:
+        context.update(extra_context)
+    return TemplateResponse(request, template_name, context=context)
