@@ -1,10 +1,17 @@
 from django.utils.translation import ugettext_lazy as _
-
 from notification.backends.base import NotificationBackend
 from push_notifications.models import APNSDevice, GCMDevice
-
-import json
 import copy
+import json
+import logging
+from django.core.mail import send_mail
+import sys
+
+try:
+    from myproject.loggers import log_event
+except ImportError:
+    log_event = None
+error_logger = logging.getLogger("raven")
 
 def _decode_list(data):
     rv = []
@@ -58,12 +65,28 @@ class MobileBackend(NotificationBackend):
         
         for dev in devices:
             msg_dev = copy.copy(json_msg)
+            dev_type = ""
             if isinstance(dev, APNSDevice):
+                dev_type = "iOS"
                 del msg_dev['msg']
             else:
+                dev_type = "Android"
                 del msg_dev['aps']
                 
             print 'Sending notification to device: '+str(dev)
+            try:
+                if log_event is not None:
+                    notification_dict = dict(
+                        log_type="push_notification",
+                        level_name="info",
+                        action="sent",
+                        notification_type=kwargs.get('notification_type', None),
+                        device=dev_type
+                    )
+                    log_event(**notification_dict)
+            except Exception, e:
+                send_mail("Logging notification failed", str(e), "umut@eversnapapp.com", ["umut@umutgultepe.com", ], fail_silently=True)
+                error_logger.error(*sys.exc_info())
             dev.send_message(msg_dev)
         return True
 
