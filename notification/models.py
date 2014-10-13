@@ -363,7 +363,7 @@ def send_now(users, label, extra_context=None, on_site=None, sender=None, relate
             "current_site": current_site,
         })
         context.update(extra_context)
-        
+
         messages = get_formatted_message(
             ['notice.html'], notice_type, context, 'notice')
         notice_setting = get_notification_setting(user, notice_type, 'email')
@@ -396,6 +396,8 @@ def send_user_notification(user, notice_type, backend, context):
     if recipients:
         try:
             kwargs = {}
+            if 'sender' in context and context['sender']:
+                kwargs['sender_id'] = context['sender'].id
             kwargs['notification_type'] = notice_type.label
             if 'sender_album_code' in context and context['sender_album_code']:
                 kwargs['sender_album_code'] = context.get('sender_album_code')
@@ -429,7 +431,7 @@ def send(*args, **kwargs):
             return queue(*args, **kwargs)
         else:
             return send_now(*args, **kwargs)
-        
+
 def queue(users, label, extra_context=None, on_site=True, sender=None, related_object_id=None):
     """
     Queue the notification in NoticeQueueBatch. This allows for large amounts
